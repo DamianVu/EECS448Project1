@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.widget.Toast;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(DBContract.UserTable.CREATE_TABLE);
         db.execSQL(DBContract.EventTable.CREATE_TABLE);
         db.execSQL(DBContract.SignupTable.CREATE_TABLE);
+        db.execSQL(DBContract.TimeSlotTable.CREATE_TABLE);
     }
 
     /**
@@ -52,6 +54,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(DBContract.UserTable.DROP_TABLE);
         db.execSQL(DBContract.EventTable.DROP_TABLE);
         db.execSQL(DBContract.SignupTable.DROP_TABLE);
+        db.execSQL(DBContract.TimeSlotTable.DROP_TABLE);
         onCreate(db);
     }
 
@@ -115,14 +118,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * @since 1.0
      */
     public int addEvent(Event e) {
-
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
 
         values.put(DBContract.EventTable.COLUMN_NAME_TITLE, e.getName());
-        values.put(DBContract.EventTable.COLUMN_NAME_TIMESLOTS, e.getTimeslots());
         values.put(DBContract.EventTable.COLUMN_NAME_CREATOR, e.getCreator());
-        values.put(DBContract.EventTable.COLUMN_NAME_DAY, e.getDate());
 
         db.insert(DBContract.EventTable.TABLE_NAME, null, values); //Perform insertion
 
@@ -130,7 +130,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         String[] columns = {DBContract.EventTable._ID};
         String sortOrder = DBContract.EventTable._ID + " DESC";
 
-
+        System.out.print("Made it");
         Cursor query = db.query(
                 DBContract.EventTable.TABLE_NAME,
                 columns,
@@ -140,6 +140,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         query.moveToNext();
         int eventID = Integer.parseInt(query.getString(query.getColumnIndexOrThrow(DBContract.EventTable._ID)));
         query.close();
+
+        for(int i = 0; i < e.getDateSlots().size(); i++) {
+            values.clear();
+            values.put(DBContract.TimeSlotTable.COLUMN_NAME_DAY, e.getDateSlots().get(i).getDate());
+            values.put(DBContract.TimeSlotTable.COLUMN_NAME_TIMESLOTS, e.getDateSlots().get(i).getTimeslots());
+            values.put(DBContract.TimeSlotTable.COLUMN_NAME_EVENT, eventID);
+            db.insert(DBContract.TimeSlotTable.TABLE_NAME, null, values);
+        }
 
         return eventID;
     }
@@ -155,42 +163,66 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         ArrayList<Event> sortedListOfEvents = new ArrayList<>(); // Will be sorted through SQL
 
-        String[] columns = {
+        String[] columnsEvent = {
                 DBContract.EventTable._ID,
                 DBContract.EventTable.COLUMN_NAME_TITLE,
-                DBContract.EventTable.COLUMN_NAME_TIMESLOTS,
                 DBContract.EventTable.COLUMN_NAME_CREATOR,
-                DBContract.EventTable.COLUMN_NAME_DAY
+        };
+
+        String[] columnsTime = {
+                DBContract.TimeSlotTable.COLUMN_NAME_EVENT,
+                DBContract.TimeSlotTable.COLUMN_NAME_TIMESLOTS,
+                DBContract.TimeSlotTable.COLUMN_NAME_DAY
         };
 
         //Sort by day for now. Could hypothetically get weird when multiple years are involved
-        String sortOrder = DBContract.EventTable.COLUMN_NAME_DAY + " COLLATE NOCASE ASC";
+        String sortOrderEvent = DBContract.EventTable.COLUMN_NAME_CREATOR + " COLLATE NOCASE ASC";
+        String sortOrderTime = DBContract.TimeSlotTable.COLUMN_NAME_DAY + " COLLATE NOCASE ASC";
 
-        Cursor query = db.query(
+        Cursor queryEvent = db.query(
                 DBContract.EventTable.TABLE_NAME,
-                columns,
+                columnsEvent,
                 null, null, null, null,
-                sortOrder
+                sortOrderEvent
         );
 
+
+
         //Populate event vector
-        while (query.moveToNext()) {
+        while (queryEvent.moveToNext()) {
 
             int id;
-            String title, timeslots, creator, day;
+            String title, creator, timeslots, date;
+            List<DateSlot> dateSlotList = new ArrayList<>();
 
-            id = Integer.parseInt(query.getString(query.getColumnIndexOrThrow(DBContract.EventTable._ID)));
-            title = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_TITLE));
-            timeslots = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_TIMESLOTS));
-            creator = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_CREATOR));
-            day = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_DAY));
+            id = Integer.parseInt(queryEvent.getString(queryEvent.getColumnIndexOrThrow(DBContract.EventTable._ID)));
+            title = queryEvent.getString(queryEvent.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_TITLE));
+            creator = queryEvent.getString(queryEvent.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_CREATOR));
+
+            String[] args = {"" + id};
+
+            Cursor queryTime = db.query(
+                    DBContract.TimeSlotTable.TABLE_NAME,
+                    columnsTime,
+                    "eid = ?", args, null, null,
+                    sortOrderTime
+            );
+
+            while(queryTime.moveToNext()) {
+                timeslots = queryTime.getString(queryTime.getColumnIndexOrThrow(DBContract.TimeSlotTable.COLUMN_NAME_TIMESLOTS));
+                date = queryTime.getString(queryTime.getColumnIndexOrThrow(DBContract.TimeSlotTable.COLUMN_NAME_DAY));
+                DateSlot dateSlot = new DateSlot(timeslots, date);
+                dateSlotList.add(dateSlot);
+            }
+
+            queryTime.close();
 
             //Create Event object from row and add to Vector
-            Event e = new Event(id, day, title, creator, timeslots); // LOL This stuff was in the wrong order... Come on guys...
+            Event e = new Event(id, title, creator, dateSlotList); // LOL This stuff was in the wrong order... Come on guys...
             sortedListOfEvents.add(e);
         }
 
-        query.close();
+        queryEvent.close();
 
         return sortedListOfEvents;
     }
@@ -207,20 +239,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         String[] userArr = {user}; //(Needs to be in an array to use as a WHERE argument)
 
-        String[] columns = {
+        String[] columnsEvent = {
                 DBContract.EventTable._ID,
                 DBContract.EventTable.COLUMN_NAME_TITLE,
-                DBContract.EventTable.COLUMN_NAME_TIMESLOTS,
                 DBContract.EventTable.COLUMN_NAME_CREATOR,
-                DBContract.EventTable.COLUMN_NAME_DAY
+        };
+
+        String[] columnsTime = {
+                DBContract.TimeSlotTable.COLUMN_NAME_EVENT,
+                DBContract.TimeSlotTable.COLUMN_NAME_TIMESLOTS,
+                DBContract.TimeSlotTable.COLUMN_NAME_DAY
         };
 
         //Sort by day for now. Could hypothetically get weird when multiple years are involved
-        String sortOrder = DBContract.EventTable.COLUMN_NAME_DAY + " COLLATE NOCASE ASC";
+        String sortOrder = DBContract.EventTable.COLUMN_NAME_CREATOR + " COLLATE NOCASE ASC";
+        String sortOrderTime = DBContract.TimeSlotTable.COLUMN_NAME_DAY + " COLLATE NOCASE ASC";
 
         Cursor query = db.query(
                 DBContract.EventTable.TABLE_NAME,
-                columns,
+                columnsEvent,
                 "creator = ?", userArr, null, null,
                 sortOrder
         );
@@ -229,16 +266,32 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         while (query.moveToNext()) {
 
             int id;
-            String title, timeslots, creator, day;
+            String title, timeslots, creator, date;
+            List<DateSlot> dateSlotList = new ArrayList<>();
 
             id = Integer.parseInt(query.getString(query.getColumnIndexOrThrow(DBContract.EventTable._ID)));
             title = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_TITLE));
-            timeslots = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_TIMESLOTS));
             creator = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_CREATOR));
-            day = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_DAY));
+            String[] args = {"" + id};
+
+            Cursor queryTime = db.query(
+                    DBContract.TimeSlotTable.TABLE_NAME,
+                    columnsTime,
+                    "eid = ?", args, null, null,
+                    sortOrderTime
+            );
+
+            while(queryTime.moveToNext()) {
+                timeslots = queryTime.getString(queryTime.getColumnIndexOrThrow(DBContract.TimeSlotTable.COLUMN_NAME_TIMESLOTS));
+                date = queryTime.getString(queryTime.getColumnIndexOrThrow(DBContract.TimeSlotTable.COLUMN_NAME_DAY));
+                DateSlot dateSlot = new DateSlot(timeslots, date);
+                dateSlotList.add(dateSlot);
+            }
+
+            queryTime.close();
 
             //Create Event object from row and add to Vector
-            Event e = new Event(id, day, title, creator, timeslots);
+            Event e = new Event(id, title, creator, dateSlotList); // LOL This stuff was in the wrong order... Come on guys...
             sortedListOfEvents.add(e);
         }
 
@@ -261,33 +314,53 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         SQLiteDatabase db = this.getReadableDatabase();
 
-        String[] columns = {
-                DBContract.EventTable.COLUMN_NAME_TIMESLOTS,
+        String[] columnsEvent = {
                 DBContract.EventTable.COLUMN_NAME_CREATOR,
-                DBContract.EventTable.COLUMN_NAME_DAY,
                 DBContract.EventTable.COLUMN_NAME_TITLE
         };
+
+        String[] columnsTime = {
+                DBContract.TimeSlotTable.COLUMN_NAME_TIMESLOTS,
+                DBContract.TimeSlotTable.COLUMN_NAME_DAY,
+        };
+
+        String sortOrderTime = DBContract.TimeSlotTable.COLUMN_NAME_DAY + " COLLATE NOCASE ASC";
 
         String[] where = {Integer.toString(eventID)};
 
         Cursor query = db.query(
                 DBContract.EventTable.TABLE_NAME,
-                columns,
+                columnsEvent,
                 "_ID = ?", where , null, null,
                 null
         );
 
         query.moveToNext();
 
-        String date = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_DAY));
         String creator = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_CREATOR));
         String name = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_TITLE));
-        String timeslots = query.getString(query.getColumnIndexOrThrow(DBContract.EventTable.COLUMN_NAME_TIMESLOTS));
-
-        Event returnEvent = new Event(eventID, date, name, creator, timeslots);
-
 
         query.close();
+
+        Cursor queryTime = db.query(
+                DBContract.TimeSlotTable.TABLE_NAME,
+                columnsTime,
+                "eid = ?", where, null, null,
+                sortOrderTime
+        );
+        List<DateSlot> dateSlotList = new ArrayList<>();
+        String timeslots, date;
+
+        while(queryTime.moveToNext()) {
+            timeslots = queryTime.getString(queryTime.getColumnIndexOrThrow(DBContract.TimeSlotTable.COLUMN_NAME_TIMESLOTS));
+            date = queryTime.getString(queryTime.getColumnIndexOrThrow(DBContract.TimeSlotTable.COLUMN_NAME_DAY));
+            DateSlot dateSlot = new DateSlot(timeslots, date);
+            dateSlotList.add(dateSlot);
+        }
+
+        Event returnEvent = new Event(eventID, name, creator, dateSlotList);
+
+        queryTime.close();
 
         return returnEvent;
     }

@@ -174,9 +174,9 @@ public class ListActivity extends Activity {
 
             //Prettier formatting, convert timeslots into timestring through series of parsing methods
             eventCreator.setText(workingEvent.getCreator());
-            eventDay.setText(workingEvent.getDate());
+            eventDay.setText(workingEvent.getDateSlots().get(0).getDate());
             eventName.setText(workingEvent.getName());
-            eventTimeslots.setText(HelperMethods.getTimeString(HelperMethods.listifyTimeslotInts(workingEvent.getTimeslots()), format));
+            eventTimeslots.setText(HelperMethods.getTimeString(HelperMethods.listifyTimeslotInts(workingEvent.getDateSlots().get(0).getTimeslots()), format));
 
             row.addView(eventName);
             row.addView(eventCreator);

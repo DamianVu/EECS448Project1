@@ -1,6 +1,8 @@
 package wubbalubbadubdub.eecs448project1.data;
 
 
+import java.util.List;
+
 /**
  * Event.java
  * @author Damian, Lane
@@ -11,25 +13,22 @@ package wubbalubbadubdub.eecs448project1.data;
 public class Event implements Comparable<Event> {
 
     private int id;
-    private String date;
     private String name;
     private String creator;
-    private String timeslots;
+    private List<DateSlot> dateSlots;
 
     /**
      * Constructor for an Event. Events will always be constructed this way.
      * @param inputID int ID of the event
-     * @param inputDate String date of format MM/DD/YYYY
      * @param inputName String name of the Event Title
      * @param inputCreator String name of the Event Creator
-     * @param inputTimeslots String timeslot list of scheduled timeslots
+     * @param inputDateSlots List of DateSlots that the event is schedulaed for
      */
-    public Event(int inputID, String inputDate, String inputName, String inputCreator, String inputTimeslots) {
+    public Event(int inputID, String inputName, String inputCreator, List<DateSlot> inputDateSlots) {
         id = inputID;
         name = inputName;
-        date = inputDate;
         creator = inputCreator;
-        timeslots = inputTimeslots;
+        dateSlots = inputDateSlots;
     }
 
     /**
@@ -38,8 +37,8 @@ public class Event implements Comparable<Event> {
      * @return int < 0 if given event is later than current event. int = 0 if given event is same day as current. int > 0 otherwise
      */
     public int compareTo(Event otherEvent) {
-        int[] currentDate = HelperMethods.getMonthDayYear(date);
-        int[] otherDate = HelperMethods.getMonthDayYear(otherEvent.getDate());
+        int[] currentDate = HelperMethods.getMonthDayYear(dateSlots.get(0).getDate());
+        int[] otherDate = HelperMethods.getMonthDayYear(otherEvent.getDateSlots().get(0).getDate());
 
         if (currentDate[2] == otherDate[2]) {
             if (currentDate[0] == otherDate[0]) {
@@ -63,11 +62,11 @@ public class Event implements Comparable<Event> {
     public int getID() { return id; }
 
     /**
-     * Getter for the Date String
-     * @return String date of format MM/DD/YYYY
+     * Getter for the Date List
+     * @return List<DateSlot> with dates included
      */
-    public String getDate() {
-        return date;
+    public List<DateSlot> getDateSlots() {
+        return dateSlots;
     }
 
     /**
@@ -86,12 +85,5 @@ public class Event implements Comparable<Event> {
         return creator;
     }
 
-    /**
-     * Getter for the Event Schedule String
-     * @return String of all timeslots for event
-     */
-    public String getTimeslots() {
-        return timeslots;
-    }
 
 }

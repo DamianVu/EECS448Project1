@@ -22,6 +22,7 @@ import java.util.List;
 
 
 import wubbalubbadubdub.eecs448project1.data.DatabaseHelper;
+import wubbalubbadubdub.eecs448project1.data.DateSlot;
 import wubbalubbadubdub.eecs448project1.data.Event;
 import wubbalubbadubdub.eecs448project1.data.HelperMethods; //For toTime() method
 
@@ -213,7 +214,7 @@ public class AddEventActivity extends Activity {
         }
 
         //Timeslot verification
-        if (e.getTimeslots().isEmpty()) {
+        if (e.getDateSlots().isEmpty()) {
             statusMessage.setText("ERROR: Please choose times for your event!");
             return false;
         }
@@ -244,12 +245,14 @@ public class AddEventActivity extends Activity {
 
         //Stringify timeslot list in int format for storage in db
         String timeslotIntList = HelperMethods.stringifyTimeslotInts(selectedTimeslots);
+        DateSlot dateSlot = new DateSlot(timeslotIntList, date);
+        List<DateSlot> dateSlotList = new ArrayList<>();
+        dateSlotList.add(dateSlot);
 
         //Create an event, attempt to verify it, and send to db if all is well
         /*Event ID is set to -1 because it's useless until a real ID is assigned
          *by the primary key upon insertion to the database after successful verification.*/
-        Event e = new Event(-1, date, name, currentUser, timeslotIntList);
-
+        Event e = new Event(-1,  name, currentUser, dateSlotList);
         if (verify(e)){
 
             //Add event and automatically sign creator up for duration of event

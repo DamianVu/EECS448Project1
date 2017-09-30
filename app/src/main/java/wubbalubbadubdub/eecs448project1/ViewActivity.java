@@ -87,9 +87,9 @@ public class ViewActivity extends Activity {
 
         eventName.setText(eventString);
         eventCreator.setText(creatorString);
-        eventDate.setText(currentEvent.getDate());
+        eventDate.setText(currentEvent.getDateSlots().get(0).getDate());
 
-        currentTimeslots = HelperMethods.listifyTimeslotInts(currentEvent.getTimeslots());
+        currentTimeslots = HelperMethods.listifyTimeslotInts(currentEvent.getDateSlots().get(0).getTimeslots());
         selectedTimeslots = new ArrayList<>();
 
 

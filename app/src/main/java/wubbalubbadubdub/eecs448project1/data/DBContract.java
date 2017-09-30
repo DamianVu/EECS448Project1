@@ -45,17 +45,33 @@ public final class DBContract {
     public static class EventTable implements BaseColumns { // If we implement BaseColumns, we can utilize _ID as a default column
         public static final String TABLE_NAME = "events";
         public static final String COLUMN_NAME_TITLE = "title";
-        public static final String COLUMN_NAME_TIMESLOTS = "timeslots";
         public static final String COLUMN_NAME_CREATOR = "creator";
-        public static final String COLUMN_NAME_DAY = "day";
 
         public static final String CREATE_TABLE = "CREATE TABLE " +
                 TABLE_NAME + " (" +
                 _ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
                 COLUMN_NAME_TITLE + " TEXT," +
-                COLUMN_NAME_DAY + " TEXT," +
-                COLUMN_NAME_TIMESLOTS + " TEXT," +
                 COLUMN_NAME_CREATOR + " TEXT);";
+        public static final String DROP_TABLE = "DROP TABLE IF EXISTS " + TABLE_NAME;
+    }
+
+    /**
+     * {Class} TimeSlots
+     * This defines the columns for our TimeSlots table
+     * @since 2.0
+     */
+    public static class TimeSlotTable implements BaseColumns {
+        public static final String TABLE_NAME = "timeslots";
+        public static final String COLUMN_NAME_EVENT = "eid";
+        public static final String COLUMN_NAME_TIMESLOTS = "timeslots";
+        public static final String COLUMN_NAME_DAY = "day";
+
+        public static final String CREATE_TABLE = "CREATE TABLE " +
+                TABLE_NAME + " (" +
+                _ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+                COLUMN_NAME_EVENT + " INTEGER," +
+                COLUMN_NAME_TIMESLOTS + " TEXT," +
+                COLUMN_NAME_DAY + " TEXT);";
         public static final String DROP_TABLE = "DROP TABLE IF EXISTS " + TABLE_NAME;
     }
 
@@ -69,13 +85,15 @@ public final class DBContract {
         public static final String COLUMN_NAME_EVENT = "eid";
         public static final String COLUMN_NAME_USER = "user";
         public static final String COLUMN_NAME_AVAIL = "availability";
+        public static final String COLUMN_NAME_DAY = "day";
 
         public static final String CREATE_TABLE = "CREATE TABLE " +
                 TABLE_NAME + " (" +
                 _ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
                 COLUMN_NAME_EVENT + " INTEGER," +
                 COLUMN_NAME_USER + " TEXT," +
-                COLUMN_NAME_AVAIL + " TEXT);";
+                COLUMN_NAME_AVAIL + " TEXT," +
+                COLUMN_NAME_DAY + " TEXT);";
         public static final String DROP_TABLE = "DROP TABLE IF EXISTS " + TABLE_NAME;
     }
 }
